@@ -56,17 +56,37 @@
         const uploadedImage = document.getElementById('uploaded-image');
         let useWebcam = true;
         async function init() {
-            const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
-            try {
-               model = await tf.loadGraphModel(modelURL);
-               console.log("Model loaded successfully!", model); // Add this line
-               predictionContainer.innerText = "Model loaded successfully!"; //and this
-         }   catch (e) {
-              console.error("Failed to load model", e);
-              predictionContainer.innerText = "Error: Failed to load model. Check console and ensure correct model URL.";
-              return;
-            }
-         }
+  const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
+  try {
+    model = await tf.loadGraphModel(modelURL);
+    console.log("Model loaded successfully!", model);
+    predictionContainer.innerText = "Model loaded successfully!";
+  } catch (e) {
+    console.error("Failed to load model", e);
+    predictionContainer.innerText = "Error: Failed to load model. Check console and ensure correct model URL.";
+    return;
+  }
+
+  const video = document.getElementById('webcam');
+  const constraints = {
+    facingMode: 'environment',
+  };
+  try {
+    webcam = await navigator.mediaDevices.getUserMedia({
+      video: constraints,
+      audio: false
+    });
+    video.srcObject = webcam;
+    video.onloadedmetadata = () => {
+      video.play();
+      predict();  // Make sure this function is defined and called correctly
+    };
+  } catch (err) {
+    console.error("Error setting up webcam:", err);
+    predictionContainer.innerText = "Error: Failed to access webcam. Please ensure webcam is connected and allowed.";
+    return;
+  }
+}
             const video = document.getElementById('webcam');
             const constraints = {
                 facingMode: 'environment',
