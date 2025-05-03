@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plant Health Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <style>
         /* style.css */
         body {
@@ -100,88 +101,128 @@
         </div>
     </div>
     <script>
-        // script.js
-        document.addEventListener('DOMContentLoaded', function () {
-            const imageUpload = document.getElementById('imageUpload');
-            const uploadArea = document.getElementById('uploadArea');
-            const browseButton = document.getElementById('browseButton');
-            const processingDiv = document.getElementById('processing');
-            const resultsDiv = document.getElementById('results');
-            const uploadedImage = document.getElementById('uploadedImage');
-            const healthStatusSpan = document.getElementById('healthStatus');
-            const confidenceSpan = document.getElementById('confidence');
-            const potentialIssuesDiv = document.getElementById('potentialIssues');
-            const issuesListSpan = document.getElementById('issuesList');
-            const severityDiv = document.getElementById('severity');
-            const severityLevelSpan = document.getElementById('severityLevel');
+        let model;
+        const imageUpload = document.getElementById('imageUpload');
+        const uploadArea = document.getElementById('uploadArea');
+        const browseButton = document.getElementById('browseButton');
+        const processingDiv = document.getElementById('processing');
+        const resultsDiv = document.getElementById('results');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const healthStatusSpan = document.getElementById('healthStatus');
+        const confidenceSpan = document.getElementById('confidence');
+        const potentialIssuesDiv = document.getElementById('potentialIssues');
+        const issuesListSpan = document.getElementById('issuesList');
+        const severityDiv = document.getElementById('severity');
+        const severityLevelSpan = document.getElementById('severityLevel');
 
-            uploadArea.addEventListener('click', function () {
-                imageUpload.click();
-            });
+        const modelURL = "https://teachablemachine.withgoogle.com/models/YOUR_MODEL_ID/model.json"; // Replace with your model URL
 
-            browseButton.addEventListener('click', function () {
-                imageUpload.click();
-            });
+        async function loadModel() {
+            try {
+                model = await tf.loadGraphModel(modelURL);
+                console.log('Model loaded');
+            } catch (error) {
+                console.error('Failed to load model:', error);
+                processingDiv.textContent = 'Error: Failed to load model. Please check the console and your model URL.';
+            }
+        }
 
-            imageUpload.addEventListener('change', function (event) {
-                const file = event.target.files[0];
-                if (file) {
-                    uploadedImage.src = URL.createObjectURL(file);
-                    processingDiv.style.display = 'block';
-                    resultsDiv.style.display = 'none';
+        loadModel();
 
-                    // Simulate AI processing and response (replace with actual backend call)
-                    setTimeout(function () {
-                        processingDiv.style.display = 'none';
-                        resultsDiv.style.display = 'block';
-                        simulateAIResponse(); // Call the function
-                    }, 2000);
-                }
-            });
+        uploadArea.addEventListener('click', function () {
+            imageUpload.click();
+        });
 
-            function simulateAIResponse() {
-                const isHealthy = Math.random() > 0.5;
-                healthStatusSpan.textContent = isHealthy ? 'Healthy' : 'Unhealthy';
-                healthStatusSpan.className = isHealthy ? 'healthy' : 'unhealthy';
-                confidenceSpan.textContent = (Math.random() * 100).toFixed(0) + '%';
+        browseButton.addEventListener('click', function () {
+            imageUpload.click();
+        });
 
-                if (!isHealthy) {
-                    potentialIssuesDiv.style.display = 'block';
-                    const issues = ['Possible issue 1', 'Possible issue 2'];  //  Replace
-                    issuesListSpan.textContent = issues.join(', ');
-                    severityDiv.style.display = 'block';
-                    const severityLevels = ['Low', 'Medium', 'High']; // Replace
-                    severityLevelSpan.textContent = severityLevels[Math.floor(Math.random() * severityLevels.length)];
-                } else {
-                    potentialIssuesDiv.style.display = 'none';
-                    severityDiv.style.display = 'none';
+        imageUpload.addEventListener('change', async function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadedImage.src = URL.createObjectURL(file);
+                processingDiv.style.display = 'block';
+                resultsDiv.style.display = 'none';
+
+                try {
+                    const prediction = await predict(file);
+                    displayResults(prediction);
+                } catch (error) {
+                    console.error('Error during prediction:', error);
+                    processingDiv.textContent = 'Error processing image. Please try again.';
+                } finally {
+                    processingDiv.style.display = 'none';
                 }
             }
+        });
 
-            uploadArea.addEventListener('dragover', function (e) {
-                e.preventDefault();
-                uploadArea.classList.add('dragover');
-            });
+        async function predict(imageFile) {
+            if (!model) {
+                throw new Error('Model not loaded.');
+            }
 
-            uploadArea.addEventListener('dragleave', function () {
-                uploadArea.classList.remove('dragover');
-            });
+            const img = new Image();
+            img.src = URL.createObjectURL(imageFile);
+            await img.decode();
 
-            uploadArea.addEventListener('drop', function (e) {
-                e.preventDefault();
-                uploadArea.classList.remove('dragover');
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    imageUpload.files = e.dataTransfer.files;
-                    const event = new Event('change', { bubbles: true });
-                    imageUpload.dispatchEvent(event);
-                } else {
-                    alert('Please upload an image file.');
-                }
-            });
+            const tensor = tf.browser.fromPixels(img)
+                .resizeNearestNeighbor([224, 224]) // Or whatever size your model expects
+                .expandDims()
+                .toFloat()
+                .div(255.0);
+
+            const predictions = await model.predict(tensor).data();
+            const predictedClass = predictions.indexOf(Math.max(...predictions));
+
+            tensor.dispose();  //  Cleanup
+            img.src = "";
+
+            return predictedClass;
+        }
+
+        function displayResults(predictedClass) {
+            resultsDiv.style.display = 'block';
+            const classNames = ['Healthy', 'Unhealthy']; //  Adapt to your class names
+            const isHealthy = predictedClass === 0;
+
+            healthStatusSpan.textContent = isHealthy ? 'Healthy' : 'Unhealthy';
+            healthStatusSpan.className = isHealthy ? 'healthy' : 'unhealthy';
+            confidenceSpan.textContent = 'N/A'; //  Confidence is not directly available in this simplified prediction
+
+            if (!isHealthy) {
+                potentialIssuesDiv.style.display = 'block';
+                const issues = ['Possible issue 1', 'Possible issue 2'];  //  Replace with actual issue
+                issuesListSpan.textContent = issues.join(', ');
+                severityDiv.style.display = 'block';
+                const severityLevels = ['Low', 'Medium', 'High']; // Replace
+                severityLevelSpan.textContent = severityLevels[Math.floor(Math.random() * severityLevels.length)]; // random
+            } else {
+                potentialIssuesDiv.style.display = 'none';
+                severityDiv.style.display = 'none';
+            }
+        }
+
+        uploadArea.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function () {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function (e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                imageUpload.files = e.dataTransfer.files;
+                const event = new Event('change', { bubbles: true });
+                imageUpload.dispatchEvent(event);
+            } else {
+                alert('Please upload an image file.');
+            }
         });
     </script>
 </body>
 </html>
-
- 
