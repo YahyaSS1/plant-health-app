@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Health Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-automl@1.0.0/dist/tf-automl.min.js"></script>
+    <style>
+        #webcam-container {
+            margin: 20px;
+            text-align: center;
+        }
+        #prediction-container {
+            margin: 20px;
+            text-align: center;
+            font-size: 24px;
+        }
+        .video-js {
+            margin-top: 10px;
+            max-width: 100%;
+            height: auto;
+        }
+        #image-upload-container {
+            margin: 20px;
+            text-align: center;
+        }
+        #uploaded-image {
+            max-width: 300px;
+            max-height: 200px;
+            margin-top: 10px;
+            display: none;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="webcam-container">
+            <video id="webcam" class="video-js" autoplay playsinline></video>
+        </div>
+        <div id="image-upload-container">
+            <input type="file" id="image-upload" accept="image/*">
+            <img id="uploaded-image" src="#" alt="Uploaded Image">
+        </div>
+        <div id="prediction-container">
+            Loading...
+        </div>
+    </div>
+    <script>
+        let model;
+        let webcam;
+        const predictionContainer = document.getElementById('prediction-container');
+        const imageUpload = document.getElementById('image-upload');
+        const uploadedImage = document.getElementById('uploaded-image');
+        let useWebcam = true;
+        async function init() {
+            const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
+            try {
+               model = await tf.loadGraphModel(modelURL);
+               console.log("Model loaded successfully!", model); // Add this line
+               predictionContainer.innerText = "Model loaded successfully!"; //and this
+         }   catch (e) {
+              console.error("Failed to load model", e);
+              predictionContainer.innerText = "Error: Failed to load model. Check console and ensure correct model URL.";
+              return;
+            }
+         }
+            const video = document.getElementById('webcam');
+            const constraints = {
+                facingMode: 'environment',
+            };
+            try {
+                webcam = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+                video.srcObject = webcam;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    predict();
+                };
+            } catch (err) {
+                console.error("Error setting up webcam:", err);
+                predictionContainer.innerText = "Error: Could not access webcam.  Check camera permissions.";
+                useWebcam = false;
+                document.getElementById('webcam-container').style.display = 'none';
+                document.getElementById('image-upload-container').style.display = 'block';
+                predict();
+                return;
+            }
+            imageUpload.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImage.src = e.target.result;
+                        uploadedImage.style.display = 'block';
+                        useWebcam = false;
+                        predict();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    uploadedImage.style.display = 'none';
+                    useWebcam = true;
+                    predict();
+                }
+            });
+        }
+        async function predict() {
+            if (!model) {
+                return;
+            }
+            let imageSource;
+            if (useWebcam) {
+                imageSource = document.getElementById('webcam');
+            } else {
+                imageSource = document.getElementById('uploaded-image');
+            }
+            try {
+                const predictions = await model.predict(imageSource);
+                let maxConfidence = 0;
+                let bestPrediction = "";
+                predictions.forEach(prediction => {
+                    if (prediction.probability > maxConfidence) {
+                        maxConfidence = prediction.probability;
+                        bestPrediction = prediction.className;
+                    }
+                });
+                predictionContainer.innerText = `Prediction: ${bestPrediction} (Confidence: ${(maxConfidence * 100).toFixed(2)}%)`;
+            }
+            catch (e) {
+                console.error("Prediction error", e);
+                predictionContainer.innerText = "Error during prediction. Check console.";
+            }
+            requestAnimationFrame(predict);
+        }
+        init();
+    </script>
+</body>
+</html>
+ 
