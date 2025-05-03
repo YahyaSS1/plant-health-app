@@ -4,142 +4,182 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plant Health Detection</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
-        #webcam-container {
+        /* style.css */
+        body {
+            font-family: sans-serif;
             margin: 20px;
-            text-align: center;
+            background-color: #f4f4f4;
         }
-        #prediction-container {
-            margin: 20px;
-            text-align: center;
-            font-size: 24px;
+
+        .container {
+            width: 80%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .video-js {
-            margin-top: 10px;
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            background-color: #eee;
+            color: #555;
+        }
+
+        .upload-area:hover {
+            background-color: #ddd;
+        }
+
+        #processing {
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+            color: #777;
+        }
+
+        #results {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        #uploadedImage {
+            display: block;
+            margin: 10px auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             max-width: 100%;
             height: auto;
         }
-        #image-upload-container {
-            margin: 20px;
-            text-align: center;
+
+        .healthy {
+            color: green;
+            font-weight: bold;
         }
-        #uploaded-image {
-            max-width: 300px;
-            max-height: 200px;
-            margin-top: 10px;
-            display: none;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+
+        .unhealthy {
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="webcam-container">
-            <video id="webcam" class="video-js" autoplay playsinline></video>
+        <h1>Plant Health Insight</h1>
+        <div class="upload-area" id="uploadArea">
+            Drag and drop image here or <button id="browseButton">Browse Files</button>
+            <input type="file" id="imageUpload" accept="image/*" style="display:none;">
         </div>
-        <div id="image-upload-container">
-            <input type="file" id="image-upload" accept="image/*">
-            <img id="uploaded-image" src="#" alt="Uploaded Image">
-        </div>
-        <div id="prediction-container">
-            Loading...
+
+        <div id="processing" style="display:none;">Processing...</div>
+
+        <div id="results" style="display:none;">
+            <h2>Analysis Results</h2>
+            <img id="uploadedImage" src="#" alt="Uploaded Plant Image" style="max-width: 300px;">
+            <p>Health Status: <span id="healthStatus" class=""></span> (<span id="confidence"></span>)</p>
+            <p id="potentialIssues" style="display:none;">Potential Issues: <span id="issuesList"></span></p>
+            <p id="severity" style="display:none;">Severity: <span id="severityLevel"></span></p>
         </div>
     </div>
-                   <script>
-    let model;
-    let webcam;
-    const predictionContainer = document.getElementById('prediction-container');
-    const imageUpload = document.getElementById('image-upload');
-    const uploadedImage = document.getElementById('uploaded-image');
-    let useWebcam = true;
-    async function init() {
-        const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
-        try {
-            //  Attempt to force a fresh load, add this to the modelURL
-            const urlWithCacheBuster = modelURL + '?t=' + Date.now();  // Add cache buster
-            model = await tf.loadGraphModel(urlWithCacheBuster);
-            console.log("Model loaded successfully!", model);
-            predictionContainer.innerText = "Model loaded successfully!";
-        } catch (e) {
-            console.error("Failed to load model", e);
-            predictionContainer.innerText = "Error: Failed to load model. Check console and ensure correct model URL.";
-            return;
-        }
+    <script>
+        // script.js
+        document.addEventListener('DOMContentLoaded', function () {
+            const imageUpload = document.getElementById('imageUpload');
+            const uploadArea = document.getElementById('uploadArea');
+            const browseButton = document.getElementById('browseButton');
+            const processingDiv = document.getElementById('processing');
+            const resultsDiv = document.getElementById('results');
+            const uploadedImage = document.getElementById('uploadedImage');
+            const healthStatusSpan = document.getElementById('healthStatus');
+            const confidenceSpan = document.getElementById('confidence');
+            const potentialIssuesDiv = document.getElementById('potentialIssues');
+            const issuesListSpan = document.getElementById('issuesList');
+            const severityDiv = document.getElementById('severity');
+            const severityLevelSpan = document.getElementById('severityLevel');
 
-        const video = document.getElementById('webcam');
-        const constraints = {
-            facingMode: 'environment',
-        };
-        try {
-            webcam = await navigator.mediaDevices.getUserMedia({
-                video: constraints,
-                audio: false
+            uploadArea.addEventListener('click', function () {
+                imageUpload.click();
             });
-            video.srcObject = webcam;
-            video.onloadedmetadata = () => {
-                video.play();
-                predict();
-            };
-        } catch (err) {
-            console.error("Error setting up webcam:", err);
-            predictionContainer.innerText = "Error: Could not access webcam.  Check camera permissions.";
-            useWebcam = false;
-            document.getElementById('webcam-container').style.display = 'none';
-            document.getElementById('image-upload-container').style.display = 'block';
-            predict();
-            return;
-        }
 
-        imageUpload.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    uploadedImage.src = e.target.result;
-                    uploadedImage.style.display = 'block';
-                    useWebcam = false;
-                    predict();
-                };
-                reader.readAsDataURL(file);
-            } else {
-                uploadedImage.style.display = 'none';
-                useWebcam = true;
-                predict();
-            }
-        });
-    }
-    async function predict() {
-        if (!model) {
-            return;
-        }
-        let imageSource;
-        if (useWebcam) {
-            imageSource = document.getElementById('webcam');
-        } else {
-            imageSource = document.getElementById('uploaded-image');
-        }
-        try {
-            const predictions = await model.predict(imageSource);
-            let maxConfidence = 0;
-            let bestPrediction = "";
-            predictions.forEach(prediction => {
-                if (prediction.probability > maxConfidence) {
-                    maxConfidence = prediction.probability;
-                    bestPrediction = prediction.className;
+            browseButton.addEventListener('click', function () {
+                imageUpload.click();
+            });
+
+            imageUpload.addEventListener('change', function (event) {
+                const file = event.target.files[0];
+                if (file) {
+                    uploadedImage.src = URL.createObjectURL(file);
+                    processingDiv.style.display = 'block';
+                    resultsDiv.style.display = 'none';
+
+                    // Simulate AI processing and response (replace with actual backend call)
+                    setTimeout(function () {
+                        processingDiv.style.display = 'none';
+                        resultsDiv.style.display = 'block';
+                        simulateAIResponse(); // Call the function
+                    }, 2000);
                 }
             });
-            predictionContainer.innerText = `Prediction: ${bestPrediction} (Confidence: ${(maxConfidence * 100).toFixed(2)}%)`;
-        }
-        catch (e) {
-            console.error("Prediction error", e);
-            predictionContainer.innerText = "Error during prediction. Check console.";
-        }
-        requestAnimationFrame(predict);
-    }
-    init();
+
+            function simulateAIResponse() {
+                const isHealthy = Math.random() > 0.5;
+                healthStatusSpan.textContent = isHealthy ? 'Healthy' : 'Unhealthy';
+                healthStatusSpan.className = isHealthy ? 'healthy' : 'unhealthy';
+                confidenceSpan.textContent = (Math.random() * 100).toFixed(0) + '%';
+
+                if (!isHealthy) {
+                    potentialIssuesDiv.style.display = 'block';
+                    const issues = ['Possible issue 1', 'Possible issue 2'];  //  Replace
+                    issuesListSpan.textContent = issues.join(', ');
+                    severityDiv.style.display = 'block';
+                    const severityLevels = ['Low', 'Medium', 'High']; // Replace
+                    severityLevelSpan.textContent = severityLevels[Math.floor(Math.random() * severityLevels.length)];
+                } else {
+                    potentialIssuesDiv.style.display = 'none';
+                    severityDiv.style.display = 'none';
+                }
+            }
+
+            uploadArea.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function () {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function (e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    imageUpload.files = e.dataTransfer.files;
+                    const event = new Event('change', { bubbles: true });
+                    imageUpload.dispatchEvent(event);
+                } else {
+                    alert('Please upload an image file.');
+                }
+            });
+        });
     </script>
 </body>
 </html>
