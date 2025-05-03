@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plant Health Detection</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-automl@1.0.0/dist/tf-automl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         #webcam-container {
             margin: 20px;
@@ -56,43 +56,26 @@
         const uploadedImage = document.getElementById('uploaded-image');
         let useWebcam = true;
         async function init() {
-  const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
-  try {
-    model = await tf.loadGraphModel(modelURL);
-    console.log("Model loaded successfully!", model);
-    predictionContainer.innerText = "Model loaded successfully!";
-  } catch (e) {
-    console.error("Failed to load model", e);
-    predictionContainer.innerText = "Error: Failed to load model. Check console and ensure correct model URL.";
-    return;
-  }
+            const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
+            try {
+                model = await tf.loadGraphModel(modelURL);
+                console.log("Model loaded successfully!", model);
+                predictionContainer.innerText = "Model loaded successfully!";
+            } catch (e) {
+                console.error("Failed to load model", e);
+                predictionContainer.innerText = "Error: Failed to load model. Check console and ensure correct model URL.";
+                return;
+            }
 
-  const video = document.getElementById('webcam');
-  const constraints = {
-    facingMode: 'environment',
-  };
-  try {
-    webcam = await navigator.mediaDevices.getUserMedia({
-      video: constraints,
-      audio: false
-    });
-    video.srcObject = webcam;
-    video.onloadedmetadata = () => {
-      video.play();
-      predict();  // Make sure this function is defined and called correctly
-    };
-  } catch (err) {
-    console.error("Error setting up webcam:", err);
-    predictionContainer.innerText = "Error: Failed to access webcam. Please ensure webcam is connected and allowed.";
-    return;
-  }
-}
             const video = document.getElementById('webcam');
             const constraints = {
                 facingMode: 'environment',
             };
             try {
-                webcam = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+                webcam = await navigator.mediaDevices.getUserMedia({
+                    video: constraints,
+                    audio: false
+                });
                 video.srcObject = webcam;
                 video.onloadedmetadata = () => {
                     video.play();
@@ -104,9 +87,10 @@
                 useWebcam = false;
                 document.getElementById('webcam-container').style.display = 'none';
                 document.getElementById('image-upload-container').style.display = 'block';
-                predict();
+                 predict();
                 return;
             }
+
             imageUpload.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file) {
@@ -157,4 +141,5 @@
     </script>
 </body>
 </html>
+
  
