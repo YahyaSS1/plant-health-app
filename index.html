@@ -48,7 +48,7 @@
             Loading...
         </div>
     </div>
-               <script>
+                   <script>
     let model;
     let webcam;
     const predictionContainer = document.getElementById('prediction-container');
@@ -58,7 +58,9 @@
     async function init() {
         const modelURL = "https://teachablemachine.withgoogle.com/models/VLkR3Y7hd/model.json";
         try {
-            model = await tf.loadGraphModel(modelURL);
+            //  Attempt to force a fresh load, add this to the modelURL
+            const urlWithCacheBuster = modelURL + '?t=' + Date.now();  // Add cache buster
+            model = await tf.loadGraphModel(urlWithCacheBuster);
             console.log("Model loaded successfully!", model);
             predictionContainer.innerText = "Model loaded successfully!";
         } catch (e) {
