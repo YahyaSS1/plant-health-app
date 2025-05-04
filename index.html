@@ -190,7 +190,7 @@
                 </button>
                 <button class="nav-icon" id="nav-stack">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zM14 1v2a1 1 0 011 1h2a1 1 0 011-1V5a2 2 0 00-2-2h-2a1 1 0 01-1-1zM6 1v6H4V3a2 2 0 00-2 2v10a2 2 0 002 2h6v-2H6v-7h4v10H4a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                        <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 0 01-2-2V5zM14 1v2a1 1 0 011 1h2a1 1 0 011-1V5a2 2 0 00-2-2h-2a1 1 0 01-1-1zM6 1v6H4V3a2 2 0 00-2 2v10a2 0 002 2h6v-2H6v-7h4v10H4a2 0 01-2-2V5a2 2 0 012-2z" />
                     </svg>
                 </button>
             </div>
@@ -214,19 +214,39 @@
     const navStack = document.getElementById('nav-stack');
 
     let model = null;
-    let modelURL = 'https://teachablemachine.withgoogle.com/models/Xzs9nIViC/';
-    let metadataURL = 'https://teachablemachine.withgoogle.com/models/Xzs9nIViC/';  // This variable is not used.
     let modelLoaded = false;
     let modelLoadAttempted = false;
     let loadingModel = false;
     let retryCount = 0;
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 5;
     let tfReady = false;
+    let modelJson = null;
+    let weightsManifest = null;
+    let modelJsonAccessible = true;
+    let weightsManifestAccessible = true;
+    let isModelLoading = false;
+    let fetchError = null;
+    // IMPORTANT:  Adjust these paths to match the location of your files.
+    const MODEL_JSON_PATH = '/model/model.json';  // Absolute path from the server root
+    const WEIGHTS_PATH = '/model/weights.manifest.json'; // Absolute path from the server root
+
+
+    // Helper function to check URL accessibility -  No longer used, but kept for reference.
+    async function checkURL(url) {
+        try {
+            const response = await fetch(url, { method: 'HEAD' });
+            return response.ok;
+        } catch (error) {
+            console.error("URL check failed:", url, error);
+            return false;
+        }
+    }
 
     // Custom model loading function (more robust)
     async function loadModel() {
         if (modelLoaded || loadingModel) return;
         loadingModel = true;
+        isModelLoading = true;
         setStatus('Analyzing', 'Loading Model...');
         try {
             if (!tfReady) {
@@ -240,64 +260,36 @@
 
             }
 
-            let modelData;
-            let weightsManifest;
 
-            // 1. Fetch the model JSON (for weights and topology)
-            try{
-                const modelJson = await fetch(`${modelURL}model.json`);
-                if (!modelJson.ok) {
-                    const errorText = await modelJson.text();
-                    throw new Error(`Failed to fetch model.json: ${modelJson.status} ${modelJson.statusText}.  Details: ${errorText}`);
-                }
-                modelData = await modelJson.json();
-                 console.log("Model JSON data:", modelData);
-            } catch(e){
-                console.error("Model JSON Fetch Error:", e);
-                throw new Error(`Failed to fetch model JSON: ${e.message}`);
-            }
-
-
-            // 2. Fetch the weights manifest
-            try{
-                const weightsManifestJson = await fetch(`${modelURL}weights.manifest.json`);
-                 if (!weightsManifestJson.ok) {
-                    const errorText = await weightsManifestJson.text();
-                    throw new Error(`Failed to fetch weights manifest: ${weightsManifestJson.status} ${weightsManifestJson.statusText}. Details: ${errorText}`);
-                }
-                weightsManifest = await weightsManifestJson.json();
-                console.log("Weights manifest:", weightsManifest);
-            } catch(e){
-                console.error("Weights Manifest Fetch Error:", e);
-                throw new Error(`Failed to fetch weights manifest: ${e.message}`);
-            }
-
-
-            // 3. Load the model using tf.loadLayersModel (with the fetched manifest)
+            // 1. Load the model using tf.loadLayersModel from local paths
             try {
-                model = await tf.loadLayersModel({
-                    modelJson: modelData,
-                    onProgress: (fraction) => {
-                        setStatus('Analyzing', `Loading Model: ${Math.round(fraction * 100)}%`);
-                    }
-                }, weightsManifest);
-                 console.log('Model loaded successfully.');
+                model = await tf.loadLayersModel(MODEL_JSON_PATH);
+                console.log('Model loaded successfully from local files.');
+                modelLoaded = true;
+                setStatus('Idle');
+                retryCount = 0;
             } catch (loadError) {
                 console.error("Error loading model with tf.loadLayersModel", loadError);
-                // IMPORTANT: Include the original error in the new error message.
-                throw new Error(`Error loading model with tf.loadLayersModel: ${loadError.message}.  Original error: ${loadError}`);
+                let errorMessage = `Error: Error loading model: ${loadError.message}`;
+                if (loadError.stack) {
+                     errorMessage += `\nStack Trace: ${loadError.stack}`;
+                }
+                setStatus('Error', errorMessage);
+                loadingModel = false;
+                isModelLoading = false;
+                return;
             }
 
 
-            modelLoaded = true;
-            setStatus('Idle');
-            retryCount = 0;
 
         } catch (error) {
             console.error('Failed to load model:', error);
-            let errorMessage = 'Failed to load the model. Please check your network connection and ensure the model URL is correct.';
+            let errorMessage = 'Failed to load the model.  Ensure model files are in the correct location.';
              if (error.message) {
                 errorMessage += ` ${error.message}`;
+            }
+             if (error.stack) {
+                errorMessage += `\nStack Trace: ${error.stack}`;
             }
             setStatus('Error', errorMessage);
             modelLoaded = false;
@@ -306,11 +298,14 @@
                 console.log(`Retrying model load (${retryCount}/${MAX_RETRIES})...`);
                 setTimeout(loadModel, 2000);
             } else {
-                setStatus('Error', 'Failed to load model after multiple retries. Please check your network connection.');
+                setStatus('Error', 'Failed to load model after multiple retries.');
                 modelLoadAttempted = true;
+                modelJson = null;
+                weightsManifest = null;
             }
         } finally {
             loadingModel = false;
+            isModelLoading = false;
         }
     }
 
@@ -322,32 +317,48 @@
 
         switch (status) {
             case 'Idle':
+                takePictureButton.disabled = false;
+                if (isModelLoading) {
+                    takePictureButton.textContent = 'Retrying...';
+                } else {
+                    takePictureButton.textContent = 'Take Picture';
+                }
                 break;
             case 'Analyzing':
+                takePictureButton.disabled = true;
                 statusMessageElement.textContent = message || 'Analyzing...';
                 statusMessageElement.className = 'status-message status-analyzing';
+                takePictureButton.textContent = 'Analyzing...';
                 break;
             case 'Healthy':
+                takePictureButton.disabled = false;
                 statusMessageElement.textContent = 'Healthy';
                 statusMessageElement.className = 'status-message status-healthy';
+                takePictureButton.textContent = 'Take Another Picture';
                 break;
             case 'Unhealthy':
+                takePictureButton.disabled = false;
                 statusMessageElement.textContent = 'Unhealthy';
                 statusMessageElement.className = 'status-message status-unhealthy';
                 if (message) {
                     diseaseMessageElement.textContent = `Disease: ${message}`;
                     diseaseMessageElement.className = 'disease-message';
                 }
+                takePictureButton.textContent = 'Take Another Picture';
                 break;
             case 'Error':
+                takePictureButton.disabled = false;
                 statusMessageElement.textContent = 'Error';
                 statusMessageElement.className = 'status-message status-error';
                 if (message) {
                     errorMessageElement.textContent = message;
                     errorMessageElement.className = 'error-message';
                 }
+                takePictureButton.textContent = 'Try Again';
                 break;
             default:
+                takePictureButton.disabled = false;
+                takePictureButton.textContent = 'Take Picture';
                 break;
         }
         if (status !== 'Idle') {
@@ -432,9 +443,7 @@
                     setStatus('Unhealthy', bestPrediction.className.split(' - ')[1] || 'Unknown Disease');
                 } else {
                     setStatus('Unhealthy', 'Unknown Disease');
-                }
-
-            } catch (error) {
+                }} catch (error) {
                 console.error('Error during analysis:', error);
                 setStatus('Error', `Error analyzing image: ${error.message}`);
             }
@@ -452,8 +461,7 @@
     });
 
     navHome.addEventListener('click', () => {
-        alert("Home button clicked.  Implementation not defined.");
-    });
+        alert("Home button clicked.  Implementation not defined.");});
 
     navStack.addEventListener('click', () => {
         alert("Stack button clicked.  Implementation not defined.");
