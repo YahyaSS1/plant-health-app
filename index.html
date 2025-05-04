@@ -27,17 +27,39 @@
       border-radius: 25px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: center;
-      padding: 20px;
+      padding: 15px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .notch {
+      width: 140px;
+      height: 25px;
+      background: black;
+      border-radius: 0 0 20px 20px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
     }
 
     #status {
       font-size: 18px;
       font-weight: bold;
       color: green;
-      margin-top: 10px;
+      margin-top: 35px;
+    }
+
+    #preview {
+      width: 90%;
+      height: 220px;
+      background-color: #e0e0e0;
+      object-fit: cover;
+      border-radius: 10px;
+      margin: 10px 0;
     }
 
     input[type="file"] {
@@ -52,13 +74,16 @@
       border: none;
       border-radius: 25px;
       cursor: pointer;
+      margin-bottom: 15px;
     }
 
     .nav {
       width: 100%;
       display: flex;
       justify-content: space-around;
-      padding: 10px 0 0;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+      margin-top: auto;
     }
 
     .nav i {
@@ -75,12 +100,14 @@
   <h2>AI Plant Analyzer</h2>
 
   <div class="phone-frame">
+    <div class="notch"></div>
+
     <div id="status">Status: N/A</div>
 
+    <img id="preview" src="" alt="No Image Selected">
+
     <input type="file" accept="image/*" id="imageUpload">
-    <label for="imageUpload" class="upload-btn">
-      Take Picture
-    </label>
+    <label for="imageUpload" class="upload-btn">Take Picture</label>
 
     <div class="nav">
       <i class="fas fa-arrow-left"></i>
@@ -93,12 +120,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
   <script>
     const URL = "https://teachablemachine.withgoogle.com/models/Xzs9nIViC/";
-    let model, imageElement;
+    let model, image;
 
     const statusDisplay = document.getElementById("status");
     const imageUpload = document.getElementById("imageUpload");
+    const preview = document.getElementById("preview");
 
-    async function initModel() {
+    async function loadModel() {
       const modelURL = URL + "model.json";
       const metadataURL = URL + "metadata.json";
       model = await tmImage.load(modelURL, metadataURL);
@@ -106,24 +134,28 @@
 
     imageUpload.addEventListener("change", function (event) {
       const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          imageElement = new Image();
-          imageElement.src = e.target.result;
-          imageElement.onload = () => predict();
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        preview.src = e.target.result;
+        image = new Image();
+        image.src = e.target.result;
+
+        image.onload = function () {
+          predictImage();
         };
-        reader.readAsDataURL(file);
-      }
+      };
+      reader.readAsDataURL(file);
     });
 
-    async function predict() {
-      if (!imageElement || !model) return;
+    async function predictImage() {
+      if (!model || !image) return;
 
-      const prediction = await model.predict(imageElement);
-      const result = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
+      const prediction = await model.predict(image);
+      const bestGuess = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
 
-      if (result.className.toLowerCase().includes("healthy")) {
+      if (bestGuess.className.toLowerCase().includes("healthy")) {
         statusDisplay.innerText = "Status: 🌿 Healthy";
         statusDisplay.style.color = "green";
       } else {
@@ -132,7 +164,7 @@
       }
     }
 
-    window.addEventListener("load", initModel);
+    window.addEventListener("load", loadModel);
   </script>
 </body>
 </html>
