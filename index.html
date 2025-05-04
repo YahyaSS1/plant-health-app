@@ -27,14 +27,14 @@
       border-radius: 25px;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
       align-items: center;
-      padding: 15px;
+      padding: 15px 10px 0 10px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
     }
 
+    /* ✅ BLACK NOTCH */
     .notch {
       width: 140px;
       height: 25px;
@@ -44,19 +44,21 @@
       top: 0;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 10;
     }
 
     #status {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
-      color: green;
+      color: #555;
       margin-top: 35px;
+      margin-bottom: 5px;
     }
 
     #preview {
       width: 90%;
       height: 220px;
-      background-color: #e0e0e0;
+      background-color: #d3d3d3;
       object-fit: cover;
       border-radius: 10px;
       margin: 10px 0;
@@ -74,25 +76,28 @@
       border: none;
       border-radius: 25px;
       cursor: pointer;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
 
     .nav {
       width: 100%;
       display: flex;
       justify-content: space-around;
+      align-items: center;
       padding-top: 10px;
       border-top: 1px solid #ccc;
       margin-top: auto;
+      padding-bottom: 10px;
     }
 
     .nav i {
-      font-size: 18px;
+      font-size: 20px;
       color: #444;
       cursor: pointer;
     }
   </style>
 
+  <!-- Font Awesome for icons -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
@@ -102,13 +107,17 @@
   <div class="phone-frame">
     <div class="notch"></div>
 
+    <!-- ✅ Status Message -->
     <div id="status">Status: N/A</div>
 
+    <!-- ✅ Image Preview -->
     <img id="preview" src="" alt="No Image Selected">
 
+    <!-- ✅ Take Picture Button -->
     <input type="file" accept="image/*" id="imageUpload">
     <label for="imageUpload" class="upload-btn">Take Picture</label>
 
+    <!-- ✅ Navigation Arrows -->
     <div class="nav">
       <i class="fas fa-arrow-left"></i>
       <i class="fas fa-home"></i>
@@ -116,7 +125,7 @@
     </div>
   </div>
 
-  <!-- Teachable Machine Script -->
+  <!-- ✅ Teachable Machine Script -->
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
   <script>
     const URL = "https://teachablemachine.withgoogle.com/models/Xzs9nIViC/";
@@ -153,7 +162,9 @@
       if (!model || !image) return;
 
       const prediction = await model.predict(image);
-      const bestGuess = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
+      const bestGuess = prediction.reduce((a, b) =>
+        a.probability > b.probability ? a : b
+      );
 
       if (bestGuess.className.toLowerCase().includes("healthy")) {
         statusDisplay.innerText = "Status: 🌿 Healthy";
