@@ -1,474 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Plant Analyzer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@tensorflow/tfjs"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .container {
-            max-width: 384px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .image-container {
-            width: 100%;
-            aspect-ratio: 1 / 1.5;
-            border-width: 4px;
-            border-color: black;
-            border-radius: 0.75rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            overflow: hidden;
-            background-image: linear-gradient(to bottom right, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .image-placeholder {
-            position: absolute;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-        .status-message {
-            position: absolute;
-            top: 0.5rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 0.5rem 1rem;
-            border-radius: 1rem;
-            color: white;
-            font-weight: 500;
-            transition-property: background-color;
-            transition-duration: 300ms;
-            z-index: 20;
-        }
-        .status-analyzing {
-            background-color: rgba(252, 211, 77, 0.9);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: translateX(-50%) scale(1); }
-            50% { transform: translateX(-50%) scale(1.05); }
-            100% { transform: translateX(-50%) scale(1); }
-        }
-        .status-healthy {
-            background-color: rgba(52, 211, 153, 0.9);
-        }
-        .status-unhealthy {
-            background-color: rgba(220, 38, 38, 0.9);
-        }
-        .status-error {
-            background-color: rgba(75, 85, 99, 0.9);
-        }
-        .disease-message {
-            position: absolute;
-            bottom: 6rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(220, 38, 38, 0.9);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 1rem;
-            font-size: 0.875rem;
-            z-index: 20;
-        }
-        .error-message {
-            position: absolute;
-            bottom: 6rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(75, 85, 99, 0.9);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 1rem;
-            font-size: 0.875rem;
-            z-index: 20;
-            text-align: center;
-        }
-        .take-picture-button {
-            position: absolute;
-            bottom: 4rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(52, 211, 153, 0.9);
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 1.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition-property: background-color, transform;
-            transition-duration: 300ms;
-            width: auto;
-            z-index: 20;
-            border: none;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            outline: none;
-        }
-        .take-picture-button:hover {
-            background-color: rgba(22, 163, 74, 0.9);
-            transform: translateX(-50%) scale(1.05);
-        }
-        .take-picture-button:focus {
-             outline: 2px solid rgba(56, 189, 248, 0.7);
-             outline-offset: 2px;
-        }
+  <meta charset="UTF-8">
+  <title>Plant Health Checker</title>
+  <style>
+    body {
+      background: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: sans-serif;
+    }
 
-        .navigation-icons {
-            position: absolute;
-            bottom: 1rem;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            padding-left: 4rem;
-            padding-right: 4rem;
-            z-index: 20;
-        }
-        .nav-icon {
-            color: #4a5568;
-            cursor: pointer;
-            border: none;
-            background-color: transparent;
-            padding: 0;
-            outline: none;
-        }
-        .nav-icon:hover {
-            color: #1a202c;
-        }
-        .nav-icon svg {
-            height: 1.5rem;
-            width: 1.5rem;
-        }
-        .hidden {
-            display: none;
-        }
-        .text-gray-600 {
-          color: #718096;
-        }
-    </style>
+    .phone {
+      background: url('784027f6-49f4-473e-b519-14e7b08b40e2.png') no-repeat center center;
+      background-size: cover;
+      width: 300px;
+      height: 600px;
+      position: relative;
+    }
+
+    .screen {
+      position: absolute;
+      top: 70px;
+      left: 20px;
+      width: 260px;
+      height: 460px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 15px;
+    }
+
+    #status {
+      font-size: 18px;
+      font-weight: bold;
+      color: green;
+      margin-top: 5px;
+    }
+
+    #webcam-container canvas {
+      border-radius: 10px;
+    }
+
+    .button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+    }
+
+    .nav-buttons button {
+      flex: 1;
+      margin: 2px;
+      font-size: 12px;
+      padding: 8px;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="container">
-        <h1 class="text-2xl font-semibold text-gray-800 mb-4">AI Plant Analyzer</h1>
-        <div class="image-container">
-            <img id="plant-image" src="#" alt="Plant" class="w-full h-full object-contain hidden">
-            <div class="image-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-white/80">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75v-3.75a1.125 1.125 0 011.125-1.125H5.25a1.125 0 011.125 1.125v3.75m-3 0h16.5m-13.5-3H12m-8.25-9.75H6.75a.75.75 0 00-.75.75v9a.75 0 00.75.75h7.5a.75 0 00.75-.75v-9a.75 0 00-.75-.75H8.25z" />
-                </svg>
-            </div>
-            <div id="status-message" class="status-message hidden"></div>
-            <div id="disease-message" class="disease-message hidden"></div>
-             <div id="error-message" class="error-message hidden"></div>
+<body>
 
-            <button id="take-picture-button" class="take-picture-button">Take Picture</button>
+  <div class="phone">
+    <div class="screen">
+      <div id="status">Status: N/A</div>
 
-            <div class="navigation-icons">
-                <button class="nav-icon" id="nav-back">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 011.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 010-1.04l3.938-3.71-3.938-3.71a.75.75 0 011.06-.02L10 8.917l2.79-3.697a.75.75 0 011.08 0z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-                <button class="nav-icon" id="nav-home">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                        <path d="M10 0a10 10 0 00-10 10c0 4.341 2.927 8.009 6.962 9.504v-7h-2.927v-3.545h2.927V7.691c0-3.505 1.709-5.438 5.147-5.438 1.466 0 2.718.103 3.119.135v3.217h-2.03c-1.099 0-1.304.518-1.304 1.252v2.032h3.301l-.532 3.415h-2.77v7a10 10 0 100-20z" />
-                    </svg>
-                </button>
-                <button class="nav-icon" id="nav-stack">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 0 01-2-2V5zM14 1v2a1 1 0 011 1h2a1 1 0 011-1V5a2 2 0 00-2-2h-2a1 1 0 01-1-1zM6 1v6H4V3a2 2 0 00-2 2v10a2 0 002 2h6v-2H6v-7h4v10H4a2 0 01-2-2V5a2 2 0 012-2z" />
-                    </svg>
-                </button>
-            </div>
-        </div>
+      <div id="webcam-container"></div>
 
-        <p class="text-gray-600 text-sm text-center mt-2">
-            Position the plant within the frame and tap to capture.
-        </p>
-        <input type="file" id="image-input" accept="image/*" class="hidden">
+      <button class="button" onclick="predict()">📸 Take Picture</button>
+
+      <div class="nav-buttons">
+        <button class="button">🏠 Home</button>
+        <button class="button">ℹ️ Info</button>
+        <button class="button">⚙️ Settings</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-    const imageInput = document.getElementById('image-input');
-    const plantImage = document.getElementById('plant-image');
-    const statusMessageElement = document.getElementById('status-message');
-    const diseaseMessageElement = document.getElementById('disease-message');
-    const errorMessageElement = document.getElementById('error-message');
-    const takePictureButton = document.getElementById('take-picture-button');
-    const navBack = document.getElementById('nav-back');
-    const navHome = document.getElementById('nav-home');
-    const navStack = document.getElementById('nav-stack');
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script>
+    const URL = "https://teachablemachine.withgoogle.com/models/Xzs9nIViC/";
+    let model, webcam, maxPredictions;
 
-    let model = null;
-    let modelLoaded = false;
-    let modelLoadAttempted = false;
-    let loadingModel = false;
-    let retryCount = 0;
-    const MAX_RETRIES = 5;
-    let tfReady = false;
-    let modelJson = null;
-    let weightsManifest = null;
-    let modelJsonAccessible = true;
-    let weightsManifestAccessible = true;
-    let isModelLoading = false;
-    let fetchError = null;
-    // IMPORTANT:  Adjust these paths to match the location of your files.
-    const MODEL_JSON_PATH = '/model/model.json';  // Absolute path from the server root
-    const WEIGHTS_PATH = '/model/weights.manifest.json'; // Absolute path from the server root
+    const statusDisplay = document.getElementById("status");
 
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
 
-    // Helper function to check URL accessibility -  No longer used, but kept for reference.
-    async function checkURL(url) {
-        try {
-            const response = await fetch(url, { method: 'HEAD' });
-            return response.ok;
-        } catch (error) {
-            console.error("URL check failed:", url, error);
-            return false;
-        }
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      const flip = true;
+      webcam = new tmImage.Webcam(200, 200, flip);
+      await webcam.setup();
+      await webcam.play();
+      window.requestAnimationFrame(loop);
+
+      document.getElementById("webcam-container").appendChild(webcam.canvas);
     }
 
-    // Custom model loading function (more robust)
-    async function loadModel() {
-        if (modelLoaded || loadingModel) return;
-        loadingModel = true;
-        isModelLoading = true;
-        setStatus('Analyzing', 'Loading Model...');
-        try {
-            if (!tfReady) {
-                try{
-                    await tf.ready();
-                    tfReady = true;
-                } catch(e){
-                    console.error("TF.Ready Error:", e);
-                    throw new Error(`Tensorflow.js failed to initialize.  ${e.message}`);
-                }
-
-            }
-
-
-            // 1. Load the model using tf.loadLayersModel from local paths
-            try {
-                model = await tf.loadLayersModel(MODEL_JSON_PATH);
-                console.log('Model loaded successfully from local files.');
-                modelLoaded = true;
-                setStatus('Idle');
-                retryCount = 0;
-            } catch (loadError) {
-                console.error("Error loading model with tf.loadLayersModel", loadError);
-                let errorMessage = `Error: Error loading model: ${loadError.message}`;
-                if (loadError.stack) {
-                     errorMessage += `\nStack Trace: ${loadError.stack}`;
-                }
-                setStatus('Error', errorMessage);
-                loadingModel = false;
-                isModelLoading = false;
-                return;
-            }
-
-
-
-        } catch (error) {
-            console.error('Failed to load model:', error);
-            let errorMessage = 'Failed to load the model.  Ensure model files are in the correct location.';
-             if (error.message) {
-                errorMessage += ` ${error.message}`;
-            }
-             if (error.stack) {
-                errorMessage += `\nStack Trace: ${error.stack}`;
-            }
-            setStatus('Error', errorMessage);
-            modelLoaded = false;
-            if (retryCount < MAX_RETRIES) {
-                retryCount++;
-                console.log(`Retrying model load (${retryCount}/${MAX_RETRIES})...`);
-                setTimeout(loadModel, 2000);
-            } else {
-                setStatus('Error', 'Failed to load model after multiple retries.');
-                modelLoadAttempted = true;
-                modelJson = null;
-                weightsManifest = null;
-            }
-        } finally {
-            loadingModel = false;
-            isModelLoading = false;
-        }
+    async function loop() {
+      webcam.update();
+      window.requestAnimationFrame(loop);
     }
 
-    function setStatus(status, message = '') {
-        statusMessageElement.textContent = '';
-        statusMessageElement.className = 'status-message hidden';
-        diseaseMessageElement.classList.add('hidden');
-        errorMessageElement.classList.add('hidden');
+    async function predict() {
+      const prediction = await model.predict(webcam.canvas);
+      let result = prediction[0];
 
-        switch (status) {
-            case 'Idle':
-                takePictureButton.disabled = false;
-                if (isModelLoading) {
-                    takePictureButton.textContent = 'Retrying...';
-                } else {
-                    takePictureButton.textContent = 'Take Picture';
-                }
-                break;
-            case 'Analyzing':
-                takePictureButton.disabled = true;
-                statusMessageElement.textContent = message || 'Analyzing...';
-                statusMessageElement.className = 'status-message status-analyzing';
-                takePictureButton.textContent = 'Analyzing...';
-                break;
-            case 'Healthy':
-                takePictureButton.disabled = false;
-                statusMessageElement.textContent = 'Healthy';
-                statusMessageElement.className = 'status-message status-healthy';
-                takePictureButton.textContent = 'Take Another Picture';
-                break;
-            case 'Unhealthy':
-                takePictureButton.disabled = false;
-                statusMessageElement.textContent = 'Unhealthy';
-                statusMessageElement.className = 'status-message status-unhealthy';
-                if (message) {
-                    diseaseMessageElement.textContent = `Disease: ${message}`;
-                    diseaseMessageElement.className = 'disease-message';
-                }
-                takePictureButton.textContent = 'Take Another Picture';
-                break;
-            case 'Error':
-                takePictureButton.disabled = false;
-                statusMessageElement.textContent = 'Error';
-                statusMessageElement.className = 'status-message status-error';
-                if (message) {
-                    errorMessageElement.textContent = message;
-                    errorMessageElement.className = 'error-message';
-                }
-                takePictureButton.textContent = 'Try Again';
-                break;
-            default:
-                takePictureButton.disabled = false;
-                takePictureButton.textContent = 'Take Picture';
-                break;
-        }
-        if (status !== 'Idle') {
-             statusMessageElement.classList.remove('hidden');
-        }
+      // Assuming your classes are "Healthy" and "Unhealthy"
+      if (result.className === "Healthy" && result.probability > 0.5) {
+        statusDisplay.innerText = "Status: 🌿 Healthy";
+        statusDisplay.style.color = "green";
+      } else {
+        statusDisplay.innerText = "Status: ❌ Unhealthy";
+        statusDisplay.style.color = "red";
+      }
     }
 
-    takePictureButton.addEventListener('click', () => {
-        imageInput.click();
-    });
-
-    imageInput.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            plantImage.src = e.target.result;
-            plantImage.classList.remove('hidden');
-            setStatus('Analyzing');
-            let img;
-            try {
-                img = new Image();
-                img.src = e.target.result;
-                await img.decode();
-            } catch (error) {
-                console.error("Error decoding image", error);
-                setStatus('Error', `Error decoding image: ${error.message}`);
-                return;
-            }
-
-            try {
-                if (!modelLoaded) {
-                    if (!modelLoadAttempted) {
-                        await loadModel();
-                        if (!modelLoaded) {
-                            setStatus('Error', 'Model failed to load.');
-                            return;
-                        }
-                    } else {
-                        setStatus('Error', 'Model failed to load.');
-                        return;
-                    }
-                }
-                const tfImg = tf.browser.fromPixels(img);
-                const resizedImg = tf.image.resize(tfImg, [224, 224]);
-                const normalizedImg = resizedImg.div(255.0);
-                const batchedImg = normalizedImg.expandDims(0);
-
-
-                let prediction;
-                try {
-                     prediction = await model.predict(batchedImg).data();
-                } catch(predictError){
-                    console.error("Error during prediction", predictError);
-                    setStatus('Error', `Error during prediction: ${predictError.message}`);
-                    return;
-                }
-
-                console.log(prediction);
-
-                const classes = ['Healthy', 'Unhealthy - Bacterial Spot', 'Unhealthy - Early Blight', 'Unhealthy - Late Blight', 'Unhealthy - Leaf Mold', 'Unhealthy - Septoria Leaf Spot'];
-                let bestPredictionIndex = -1;
-                let maxProbability = 0;
-
-                for (let i = 0; i < prediction.length; i++) {
-                    if (prediction[i] > maxProbability) {
-                        maxProbability = prediction[i];
-                        bestPredictionIndex = i;
-                    }
-                }
-                const bestPrediction = {
-                        className: classes[bestPredictionIndex],
-                        probability: maxProbability
-                }
-
-                console.log(bestPrediction);
-
-                if (bestPrediction.className === 'Healthy') {
-                    setStatus('Healthy');
-                } else if (bestPrediction.className.startsWith('Unhealthy')) {
-                    setStatus('Unhealthy', bestPrediction.className.split(' - ')[1] || 'Unknown Disease');
-                } else {
-                    setStatus('Unhealthy', 'Unknown Disease');
-                }} catch (error) {
-                console.error('Error during analysis:', error);
-                setStatus('Error', `Error analyzing image: ${error.message}`);
-            }
-        };
-        reader.onerror = () => {
-            setStatus('Error', 'Failed to read file');
-            plantImage.classList.add('hidden');
-        }
-        reader.readAsDataURL(file);
-    });
-
-    //Navigation
-    navBack.addEventListener('click', () => {
-        alert("Back button clicked.  Implementation not defined.");
-    });
-
-    navHome.addEventListener('click', () => {
-        alert("Home button clicked.  Implementation not defined.");});
-
-    navStack.addEventListener('click', () => {
-        alert("Stack button clicked.  Implementation not defined.");
-    });
-
-    // Load the model on page load
-    loadModel();
-    </script>
+    window.addEventListener("load", init);
+  </script>
 </body>
 </html>
