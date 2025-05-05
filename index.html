@@ -5,7 +5,7 @@
   <title>AI Plant Analyzer</title>
   <style>
     body {
-      background-color: #eceff1;
+      background-color: #999;
       font-family: 'Segoe UI', sans-serif;
       display: flex;
       flex-direction: column;
@@ -22,19 +22,18 @@
     .phone-frame {
       width: 300px;
       height: 540px;
-      background: #f9f9f9;
+      background: #d3d3d3;
       border: 3px solid black;
       border-radius: 25px;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      padding: 15px 10px 0 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      padding: 0 10px;
       position: relative;
       overflow: hidden;
     }
 
-    /* ✅ BLACK NOTCH */
     .notch {
       width: 140px;
       height: 25px;
@@ -47,21 +46,31 @@
       z-index: 10;
     }
 
+    .content {
+      margin-top: 40px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-grow: 1;
+    }
+
     #status {
       font-size: 16px;
       font-weight: bold;
       color: #555;
-      margin-top: 35px;
-      margin-bottom: 5px;
+      margin: 10px 0;
+      display: none;
     }
 
     #preview {
       width: 90%;
-      height: 220px;
-      background-color: #d3d3d3;
+      height: 200px;
+      background-color: #bbb;
       object-fit: cover;
       border-radius: 10px;
-      margin: 10px 0;
+      margin-bottom: 10px;
+      display: none;
     }
 
     input[type="file"] {
@@ -76,7 +85,21 @@
       border: none;
       border-radius: 25px;
       cursor: pointer;
-      margin-bottom: 20px;
+      margin-bottom: 5px;
+    }
+
+    .footer {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .upload-section {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 5px;
     }
 
     .nav {
@@ -84,96 +107,107 @@
       display: flex;
       justify-content: space-around;
       align-items: center;
-      padding-top: 10px;
+      padding: 10px 0;
       border-top: 1px solid #ccc;
-      margin-top: auto;
-      padding-bottom: 10px;
     }
 
     .nav i {
-      font-size: 20px;
+      font-size: 24px;
       color: #444;
       cursor: pointer;
     }
   </style>
 
-  <!-- Font Awesome for icons -->
+  <!-- FontAwesome icons -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
-
   <h2>AI Plant Analyzer</h2>
-
   <div class="phone-frame">
     <div class="notch"></div>
-
-    <!-- ✅ Status Message -->
-    <div id="status">Status: N/A</div>
-
-    <!-- ✅ Image Preview -->
-    <img id="preview" src="" alt="No Image Selected">
-
-    <!-- ✅ Take Picture Button -->
-    <input type="file" accept="image/*" id="imageUpload">
-    <label for="imageUpload" class="upload-btn">Take Picture</label>
-
-    <!-- ✅ Navigation Arrows -->
-    <div class="nav">
-      <i class="fas fa-arrow-left"></i>
-      <i class="fas fa-home"></i>
-      <i class="fas fa-link"></i>
+    <div class="content">
+      <img id="preview" alt="Plant Image Preview">
+      <div id="status">Loading model...</div>
+    </div>
+    <div class="footer">
+      <div class="upload-section">
+        <input type="file" accept="image/*" id="imageUpload">
+        <label for="imageUpload" class="upload-btn">Take Picture</label>
+      </div>
+      <div class="nav">
+        <i class="fas fa-chevron-left"></i>
+        <i class="fas fa-circle"></i>
+        <i class="fas fa-chevron-right"></i>
+      </div>
     </div>
   </div>
 
-  <!-- ✅ Teachable Machine Script -->
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
-  <script>
-    const URL = "https://teachablemachine.withgoogle.com/models/Xzs9nIViC/";
-    let model, image;
+  <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
 
-    const statusDisplay = document.getElementById("status");
+  <!-- Teachable Machine -->
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+  <script>
+    const URL = "https://teachablemachine.withgoogle.com/models/CmBi9BAPm/";
+    let model, modelReady = false;
+
     const imageUpload = document.getElementById("imageUpload");
     const preview = document.getElementById("preview");
+    const statusDisplay = document.getElementById("status");
 
     async function loadModel() {
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
-      model = await tmImage.load(modelURL, metadataURL);
+      try {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+        model = await tmImage.load(modelURL, metadataURL);
+        modelReady = true;
+        statusDisplay.innerText = "✅ Model ready. Upload a plant image.";
+        statusDisplay.style.display = "block";
+        statusDisplay.style.color = "#333";
+      } catch (err) {
+        statusDisplay.innerText = "❌ Failed to load model.";
+        statusDisplay.style.color = "red";
+        statusDisplay.style.display = "block";
+      }
     }
 
-    imageUpload.addEventListener("change", function (event) {
+    imageUpload.addEventListener("change", async (event) => {
       const file = event.target.files[0];
-      if (!file) return;
+      if (!file || !modelReady) return;
 
       const reader = new FileReader();
       reader.onload = function (e) {
         preview.src = e.target.result;
-        image = new Image();
-        image.src = e.target.result;
+        preview.style.display = "block";
 
-        image.onload = function () {
-          predictImage();
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = async () => {
+          const prediction = await model.predict(img);
+          console.log("Prediction:", prediction); // Log all predictions
+
+          // Get the best prediction
+          const best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
+          const label = best.className;
+          const confidence = (best.probability * 100).toFixed(2) + "%";
+
+          statusDisplay.style.display = "block";
+
+          if (label === "Healthy Leaf" || label.toLowerCase().includes("healthy")) {
+            statusDisplay.innerText = `🌿 Healthy (${confidence})`;
+            statusDisplay.style.color = "green";
+          } else if (label === "Unhealthy Leaf" || label.toLowerCase().includes("unhealthy")) {
+            statusDisplay.innerText = `❌ Unhealthy (${confidence})`;
+            statusDisplay.style.color = "red";
+          } else {
+            statusDisplay.innerText = `🤔 Unknown (${label}, ${confidence})`;
+            statusDisplay.style.color = "orange";
+          }
         };
       };
       reader.readAsDataURL(file);
     });
-
-    async function predictImage() {
-      if (!model || !image) return;
-
-      const prediction = await model.predict(image);
-      const bestGuess = prediction.reduce((a, b) =>
-        a.probability > b.probability ? a : b
-      );
-
-      if (bestGuess.className.toLowerCase().includes("healthy")) {
-        statusDisplay.innerText = "Status: 🌿 Healthy";
-        statusDisplay.style.color = "green";
-      } else {
-        statusDisplay.innerText = "Status: ❌ Unhealthy";
-        statusDisplay.style.color = "red";
-      }
-    }
 
     window.addEventListener("load", loadModel);
   </script>
