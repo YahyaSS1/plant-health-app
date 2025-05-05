@@ -187,22 +187,19 @@
           const prediction = await model.predict(img);
           console.log("Prediction:", prediction); // Log all predictions
 
-          // Get the best prediction
           const best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
           const label = best.className;
-          const confidence = (best.probability * 100).toFixed(2) + "%";
+          const probability = best.probability;
+          const confidence = (probability * 100).toFixed(2) + "%";
 
           statusDisplay.style.display = "block";
 
-          if (label === "Healthy Leaf" || label.toLowerCase().includes("healthy")) {
+          if ((label === "Healthy Leaf" || label.toLowerCase().includes("healthy")) && probability >= 0.9989) {
             statusDisplay.innerText = `🌿 Healthy (${confidence})`;
             statusDisplay.style.color = "green";
-          } else if (label === "Unhealthy Leaf" || label.toLowerCase().includes("unhealthy")) {
+          } else {
             statusDisplay.innerText = `❌ Unhealthy (${confidence})`;
             statusDisplay.style.color = "red";
-          } else {
-            statusDisplay.innerText = `🤔 Unknown (${label}, ${confidence})`;
-            statusDisplay.style.color = "orange";
           }
         };
       };
